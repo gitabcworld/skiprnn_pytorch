@@ -13,6 +13,7 @@ Three experiments are done in the paper. For the experiment adding_task and freq
 - [x] code skipLSTM, skipGRU
 - [x] code skipMultiLSTM, skipMultiGRU
 - [x] added logs and tasks.
+- [ ] check batch normalization inside skip cells
 - [ ] check results corresponds with the results of the paper.
 
 ## Installation
