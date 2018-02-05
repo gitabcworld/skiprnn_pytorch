@@ -50,6 +50,7 @@ class CCellBase(RNNCellBase):
         self.reset_parameters()
         self.activation = activation
         self.layer_norm = layer_norm
+        self.lst_bnorm_rnn = None
 
     def reset_parameters(self):
         stdv = 1.0 / math.sqrt(self.hidden_size)
@@ -83,6 +84,13 @@ class CCellBaseLSTM(CCellBase):
             self.check_forward_hidden(input, hx[0], '[0]')
             self.check_forward_hidden(input, hx[1], '[1]')
 
+        # Initialize batchnorm layers
+        if self.layer_norm and self.lst_bnorm_rnn is None:
+            # Create gain and bias for input_gate, new_input, forget_gate, output_gate
+            self.lst_bnorm_rnn = torch.nn.ModuleList([nn.BatchNorm1d(self.hidden_size) for i in np.arange(4)])
+            if input.is_cuda:
+                self.lst_bnorm_rnn = self.lst_bnorm_rnn.cuda()
+
         lst_output = []
         for t in np.arange(sequence_length):
             hx = self.cell(
@@ -90,7 +98,7 @@ class CCellBaseLSTM(CCellBase):
                 self.weight_ih[0], self.weight_hh[0],
                 self.bias_ih[0], self.bias_hh[0],
                 activation=self.activation,
-                layer_norm=self.layer_norm
+                lst_layer_norm=self.lst_bnorm_rnn
             )
             lst_output.append(hx[0])
         output = torch.stack(lst_output)
@@ -120,6 +128,13 @@ class CCellBaseGRU(CCellBase):
         else:
             self.check_forward_hidden(input, hx, '[0]')
 
+        # Initialize batchnorm layers
+        if self.layer_norm and self.lst_bnorm_rnn is None:
+            # Create gain and bias for reset_gate and update_gate
+            self.lst_bnorm_rnn = torch.nn.ModuleList([nn.BatchNorm1d(self.hidden_size) for i in np.arange(2)])
+            if input.is_cuda:
+                self.lst_bnorm_rnn = self.lst_bnorm_rnn.cuda()
+
         lst_output = []
         for t in np.arange(sequence_length):
             hx = self.cell(
@@ -127,7 +142,7 @@ class CCellBaseGRU(CCellBase):
                 self.weight_ih[0], self.weight_hh[0],
                 self.bias_ih[0], self.bias_hh[0],
                 activation=self.activation,
-                layer_norm=self.layer_norm
+                lst_layer_norm=self.lst_bnorm_rnn
             )
             lst_output.append(hx)
         output = torch.stack(lst_output)
@@ -183,6 +198,18 @@ class CCellBaseSkipLSTM(CCellBase):
                 self.check_forward_hidden(input, hx[0], '[0]')
                 self.check_forward_hidden(input, hx[1], '[1]')
 
+        # Initialize batchnorm layers
+        if self.layer_norm and self.lst_bnorm_rnn is None:
+            self.lst_bnorm_rnn = []
+            for i in np.arange(self.num_layers):
+                # Create gain and bias for input_gate, new_input, forget_gate, output_gate
+                lst_bnorm_rnn_tmp = torch.nn.ModuleList([nn.BatchNorm1d(self.hidden_size) for i in np.arange(4)])
+                if input.is_cuda:
+                    lst_bnorm_rnn_tmp = lst_bnorm_rnn_tmp.cuda()
+                self.lst_bnorm_rnn.append(lst_bnorm_rnn_tmp)
+            self.lst_bnorm_rnn = torch.nn.ModuleList(self.lst_bnorm_rnn)
+
+
         lst_output = []
         lst_update_gate = []
         for t in np.arange(sequence_length):
@@ -191,7 +218,7 @@ class CCellBaseSkipLSTM(CCellBase):
                 self.weight_ih, self.weight_hh, self.weight_uh,
                 self.bias_ih, self.bias_hh, self.bias_uh,
                 activation=self.activation,
-                layer_norm=self.layer_norm
+                lst_layer_norm=self.lst_bnorm_rnn
             )
             new_h, update_gate = output
             lst_output.append(new_h)
@@ -246,6 +273,17 @@ class CCellBaseSkipGRU(CCellBase):
             else:
                 self.check_forward_hidden(input, hx[0], '[0]')
 
+        # Initialize batchnorm layers
+        if self.layer_norm and self.lst_bnorm_rnn is None:
+            self.lst_bnorm_rnn = []
+            for i in np.arange(self.num_layers):
+                # Create gain and bias for input_gate, new_input, forget_gate, output_gate
+                lst_bnorm_rnn_tmp = torch.nn.ModuleList([nn.BatchNorm1d(self.hidden_size) for i in np.arange(2)])
+                if input.is_cuda:
+                    lst_bnorm_rnn_tmp = lst_bnorm_rnn_tmp.cuda()
+                self.lst_bnorm_rnn.append(lst_bnorm_rnn_tmp)
+            self.lst_bnorm_rnn = torch.nn.ModuleList(self.lst_bnorm_rnn)
+
         lst_output = []
         lst_update_gate = []
         for t in np.arange(sequence_length):
@@ -254,7 +292,7 @@ class CCellBaseSkipGRU(CCellBase):
                 self.weight_ih, self.weight_hh, self.weight_uh,
                 self.bias_ih, self.bias_hh, self.bias_uh,
                 activation=self.activation,
-                layer_norm=self.layer_norm
+                lst_layer_norm=self.lst_bnorm_rnn
             )
             new_h, update_gate = output
             lst_output.append(new_h)

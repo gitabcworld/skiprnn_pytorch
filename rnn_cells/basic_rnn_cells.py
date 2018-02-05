@@ -3,7 +3,7 @@ import torch.nn as nn
 
 # Implementation from nn._functions.rnn.py
 def BasicLSTMCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None,
-                  activation=F.tanh, layer_norm=False):
+                  activation=F.tanh, lst_layer_norm=None):
     '''
     Parameters of a basic LSTM cell
     :param forget_bias: float, the bias added to the forget gates. The biases are for the forget gate in order to
@@ -18,18 +18,11 @@ def BasicLSTMCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None,
 
     ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
-    # TODO: check the input size for the BatchNorm1d
-    if layer_norm:
-        if ingate.is_cuda:
-            ingate = nn.BatchNorm1d(ingate.shape[1]).cuda()(ingate.contiguous())
-            forgetgate = nn.BatchNorm1d(forgetgate.shape[1]).cuda()(forgetgate.contiguous())
-            cellgate = nn.BatchNorm1d(cellgate.shape[1]).cuda()(cellgate.contiguous())
-            outgate = nn.BatchNorm1d(outgate.shape[1]).cuda()(outgate.contiguous())
-        else:
-            ingate = nn.BatchNorm1d(ingate.shape[1])(ingate.contiguous())
-            forgetgate = nn.BatchNorm1d(forgetgate.shape[1])(forgetgate.contiguous())
-            cellgate = nn.BatchNorm1d(cellgate.shape[1])(cellgate.contiguous())
-            outgate = nn.BatchNorm1d(outgate.shape[1])(outgate.contiguous())
+    if lst_layer_norm:
+        ingate = lst_layer_norm[0](ingate.contiguous())
+        forgetgate = lst_layer_norm[1](forgetgate.contiguous())
+        cellgate = lst_layer_norm[2](cellgate.contiguous())
+        outgate = lst_layer_norm[3](outgate.contiguous())
 
     ingate = F.sigmoid(ingate)
     forgetgate = F.sigmoid(forgetgate)
@@ -46,7 +39,7 @@ def BasicLSTMCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None,
 
 # Implementation from nn._functions.rnn.py
 def BasicGRUCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None,
-                  activation=F.tanh, layer_norm=False):
+                  activation=F.tanh, lst_layer_norm=None):
     '''
     Parameters of a basic GRU cell
     :param forget_bias: float, the bias added to the forget gates. The biases are for the forget gate in order to
@@ -60,16 +53,11 @@ def BasicGRUCell(input, hidden, w_ih, w_hh, b_ih=None, b_hh=None,
     i_r, i_i, i_n = gi.chunk(3, 1)
     h_r, h_i, h_n = gh.chunk(3, 1)
 
-    # TODO: check the input size for the BatchNorm1d
     resetgate_tmp = i_r + h_r
     inputgate_tmp = i_i + h_i
-    if layer_norm:
-        if inputgate_tmp.is_cuda:
-            resetgate_tmp = nn.BatchNorm1d(resetgate_tmp.shape[1]).cuda()(resetgate_tmp.contiguous())
-            inputgate_tmp = nn.BatchNorm1d(inputgate_tmp.shape[1]).cuda()(inputgate_tmp.contiguous())
-        else:
-            resetgate_tmp = nn.BatchNorm1d(resetgate_tmp.shape[1])(resetgate_tmp.contiguous())
-            inputgate_tmp = nn.BatchNorm1d(inputgate_tmp.shape[1])(inputgate_tmp.contiguous())
+    if lst_layer_norm:
+        resetgate_tmp = lst_layer_norm[0](resetgate_tmp.contiguous())
+        inputgate_tmp = lst_layer_norm[1](inputgate_tmp.contiguous())
 
     resetgate = F.sigmoid(resetgate_tmp)
     inputgate = F.sigmoid(inputgate_tmp)

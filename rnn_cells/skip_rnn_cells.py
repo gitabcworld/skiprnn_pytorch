@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 
 def SkipLSTMCell(input, hidden, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None, b_uh=None,
-                  activation=F.tanh, layer_norm=False):
+                  activation=F.tanh, lst_layer_norm=None):
     if num_layers != 1:
         raise RuntimeError("wrong num_layers: got {}, expected {}".format(num_layers, 1))
     w_ih, w_hh = w_ih[0], w_hh[0]
@@ -17,17 +17,11 @@ def SkipLSTMCell(input, hidden, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=Non
 
     ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
-    if layer_norm:
-        if ingate.is_cuda:
-            ingate = nn.BatchNorm1d(ingate.shape[1]).cuda()(ingate.contiguous())
-            forgetgate = nn.BatchNorm1d(forgetgate.shape[1]).cuda()(forgetgate.contiguous())
-            cellgate = nn.BatchNorm1d(cellgate.shape[1]).cuda()(cellgate.contiguous())
-            outgate = nn.BatchNorm1d(outgate.shape[1]).cuda()(outgate.contiguous())
-        else:
-            ingate = nn.BatchNorm1d(ingate.shape[1])(ingate.contiguous())
-            forgetgate = nn.BatchNorm1d(forgetgate.shape[1])(forgetgate.contiguous())
-            cellgate = nn.BatchNorm1d(cellgate.shape[1])(cellgate.contiguous())
-            outgate = nn.BatchNorm1d(outgate.shape[1])(outgate.contiguous())
+    if lst_layer_norm:
+        ingate = lst_layer_norm[0][0](ingate.contiguous())
+        forgetgate = lst_layer_norm[0][1](forgetgate.contiguous())
+        cellgate = lst_layer_norm[0][2](cellgate.contiguous())
+        outgate = lst_layer_norm[0][3](outgate.contiguous())
 
     ingate = F.sigmoid(ingate)
     forgetgate = F.sigmoid(forgetgate)
@@ -57,7 +51,7 @@ def SkipLSTMCell(input, hidden, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=Non
 ######################################################
 
 def SkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None, b_uh=None,
-                  activation=F.tanh, layer_norm=False):
+                  activation=F.tanh, lst_layer_norm=None):
 
     if num_layers != 1:
         raise RuntimeError("wrong num_layers: got {}, expected {}".format(num_layers, 1))
@@ -74,13 +68,10 @@ def SkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None,
 
     resetgate_tmp = i_r + h_r
     inputgate_tmp = i_i + h_i
-    if layer_norm:
-        if inputgate_tmp.is_cuda:
-            resetgate_tmp = nn.BatchNorm1d(resetgate_tmp.shape[1]).cuda()(resetgate_tmp.contiguous())
-            inputgate_tmp = nn.BatchNorm1d(inputgate_tmp.shape[1]).cuda()(inputgate_tmp.contiguous())
-        else:
-            resetgate_tmp = nn.BatchNorm1d(resetgate_tmp.shape[1])(resetgate_tmp.contiguous())
-            inputgate_tmp = nn.BatchNorm1d(inputgate_tmp.shape[1])(inputgate_tmp.contiguous())
+
+    if lst_layer_norm:
+        resetgate_tmp = lst_layer_norm[0][0](resetgate_tmp.contiguous())
+        inputgate_tmp = lst_layer_norm[0][1](inputgate_tmp.contiguous())
 
     resetgate = F.sigmoid(resetgate_tmp)
     inputgate = F.sigmoid(inputgate_tmp)
@@ -106,7 +97,7 @@ def SkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None,
 ######################################################
 
 def MultiSkipLSTMCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None, b_uh=None,
-                  activation=F.tanh, layer_norm=False):
+                  activation=F.tanh, lst_layer_norm=None):
 
     _, _ , update_prob_prev, cum_update_prob_prev = state[-1]
     cell_input = input
@@ -119,17 +110,11 @@ def MultiSkipLSTMCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh
 
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
-        if layer_norm:
-            if ingate.is_cuda:
-                ingate = nn.BatchNorm1d(ingate.shape[1]).cuda()(ingate.contiguous())
-                forgetgate = nn.BatchNorm1d(forgetgate.shape[1]).cuda()(forgetgate.contiguous())
-                cellgate = nn.BatchNorm1d(cellgate.shape[1]).cuda()(cellgate.contiguous())
-                outgate = nn.BatchNorm1d(outgate.shape[1]).cuda()(outgate.contiguous())
-            else:
-                ingate = nn.BatchNorm1d(ingate.shape[1])(ingate.contiguous())
-                forgetgate = nn.BatchNorm1d(forgetgate.shape[1])(forgetgate.contiguous())
-                cellgate = nn.BatchNorm1d(cellgate.shape[1])(cellgate.contiguous())
-                outgate = nn.BatchNorm1d(outgate.shape[1])(outgate.contiguous())
+        if lst_layer_norm:
+            ingate = lst_layer_norm[idx][0](ingate.contiguous())
+            forgetgate = lst_layer_norm[idx][1](forgetgate.contiguous())
+            cellgate = lst_layer_norm[idx][2](cellgate.contiguous())
+            outgate = lst_layer_norm[idx][3](outgate.contiguous())
 
         ingate = F.sigmoid(ingate)
         forgetgate = F.sigmoid(forgetgate)
@@ -169,7 +154,7 @@ def MultiSkipLSTMCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh
 ######################################################
 
 def MultiSkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None, b_uh=None,
-                  activation=F.tanh, layer_norm=False):
+                  activation=F.tanh, lst_layer_norm=None):
 
     _ , update_prob_prev, cum_update_prob_prev = state[-1]
     cell_input = input
@@ -186,13 +171,9 @@ def MultiSkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=
 
         resetgate_tmp = i_r + h_r
         inputgate_tmp = i_i + h_i
-        if layer_norm:
-            if inputgate_tmp.is_cuda:
-                resetgate_tmp = nn.BatchNorm1d(resetgate_tmp.shape[1]).cuda()(resetgate_tmp.contiguous())
-                inputgate_tmp = nn.BatchNorm1d(inputgate_tmp.shape[1]).cuda()(inputgate_tmp.contiguous())
-            else:
-                resetgate_tmp = nn.BatchNorm1d(resetgate_tmp.shape[1])(resetgate_tmp.contiguous())
-                inputgate_tmp = nn.BatchNorm1d(inputgate_tmp.shape[1])(inputgate_tmp.contiguous())
+        if lst_layer_norm:
+            resetgate_tmp = lst_layer_norm[idx][0](resetgate_tmp.contiguous())
+            inputgate_tmp = lst_layer_norm[idx][1](inputgate_tmp.contiguous())
 
         resetgate = F.sigmoid(resetgate_tmp)
         inputgate = F.sigmoid(inputgate_tmp)
