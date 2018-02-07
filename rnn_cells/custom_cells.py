@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.modules.rnn import RNNCellBase
 from torch.nn.parameter import Parameter
+from torch.nn.init import xavier_uniform
 from basic_rnn_cells import BasicLSTMCell, BasicGRUCell
 from skip_rnn_cells import SkipLSTMCell, SkipGRUCell, MultiSkipLSTMCell, MultiSkipGRUCell
 import math
@@ -27,15 +28,15 @@ class CCellBase(RNNCellBase):
 
         for i in np.arange(self.num_layers):
             if i == 0:
-                weight_ih = Parameter(torch.Tensor(learnable_elements * hidden_size, input_size))
+                weight_ih = Parameter(xavier_uniform(torch.Tensor(learnable_elements * hidden_size, input_size)))
             else:
-                weight_ih = Parameter(torch.Tensor(learnable_elements * hidden_size, hidden_size))
-            weight_hh = Parameter(torch.Tensor(learnable_elements * hidden_size, hidden_size))
+                weight_ih = Parameter(xavier_uniform(torch.Tensor(learnable_elements * hidden_size, hidden_size)))
+            weight_hh = Parameter(xavier_uniform(torch.Tensor(learnable_elements * hidden_size, hidden_size)))
             self.weight_ih.append(weight_ih)
             self.weight_hh.append(weight_hh)
             if bias:
-                bias_ih = Parameter(torch.Tensor(learnable_elements * hidden_size))
-                bias_hh = Parameter(torch.Tensor(learnable_elements * hidden_size))
+                bias_ih = Parameter(torch.zeros(learnable_elements * hidden_size))
+                bias_hh = Parameter(torch.zeros(learnable_elements * hidden_size))
                 self.bias_ih.append(bias_ih)
                 self.bias_hh.append(bias_hh)
             else:
@@ -47,15 +48,9 @@ class CCellBase(RNNCellBase):
             self.bias_ih = nn.ParameterList(self.bias_ih)
             self.bias_hh = nn.ParameterList(self.bias_hh)
 
-        self.reset_parameters()
         self.activation = activation
         self.layer_norm = layer_norm
         self.lst_bnorm_rnn = None
-
-    def reset_parameters(self):
-        stdv = 1.0 / math.sqrt(self.hidden_size)
-        for weight in self.parameters():
-            weight.data.uniform_(-stdv, stdv)
 
 
 class CCellBaseLSTM(CCellBase):
@@ -156,12 +151,11 @@ class CCellBaseSkipLSTM(CCellBase):
                     bias=True, batch_first = False, activation=F.tanh, layer_norm=False):
         super(CCellBaseSkipLSTM, self).__init__(cell, learnable_elements, input_size, hidden_size, num_layers,
                                                 bias, batch_first, activation, layer_norm)
-        self.weight_uh = Parameter(torch.Tensor(1, hidden_size))
+        self.weight_uh = Parameter(xavier_uniform(torch.Tensor(1, hidden_size)))
         if bias:
-            self.bias_uh = Parameter(torch.Tensor(1))
+            self.bias_uh = Parameter(torch.ones(1))
         else:
             self.register_parameter('bias_uh', None)
-        self.reset_parameters()
 
     def forward(self, input, hx = None):
 
@@ -236,12 +230,11 @@ class CCellBaseSkipGRU(CCellBase):
                     bias=True, batch_first = False, activation=F.tanh, layer_norm=False):
         super(CCellBaseSkipGRU, self).__init__(cell, learnable_elements, input_size, hidden_size, num_layers,
                                                bias, batch_first, activation, layer_norm)
-        self.weight_uh = Parameter(torch.Tensor(1, hidden_size))
+        self.weight_uh = Parameter(xavier_uniform(torch.Tensor(1, hidden_size)))
         if bias:
-            self.bias_uh = Parameter(torch.Tensor(1))
+            self.bias_uh = Parameter(torch.ones(1))
         else:
             self.register_parameter('bias_uh', None)
-        self.reset_parameters()
 
     def forward(self, input, hx = None):
         if len(input.shape) == 3:
@@ -310,15 +303,15 @@ class CBasicLSTMCell(CCellBaseLSTM):
         super(CBasicLSTMCell, self).__init__(cell=BasicLSTMCell, learnable_elements=4, num_layers = 1, *args, **kwargs)
 
     def init_hidden(self, batch_size):
-        return (Variable(torch.rand(batch_size, self.hidden_size)),
-                Variable(torch.rand(batch_size, self.hidden_size)))
+        return (Variable(torch.randn(batch_size, self.hidden_size)),
+                Variable(torch.randn(batch_size, self.hidden_size)))
 
 class CBasicGRUCell(CCellBaseGRU):
     def __init__(self, *args, **kwargs):
         super(CBasicGRUCell, self).__init__(cell=BasicGRUCell, learnable_elements=3, num_layers = 1, *args, **kwargs)
 
     def init_hidden(self, batch_size):
-        return (Variable(torch.rand(batch_size, self.hidden_size)))
+        return (Variable(torch.randn(batch_size, self.hidden_size)))
 
 class CSkipLSTMCell(CCellBaseSkipLSTM):
     def __init__(self, *args, **kwargs):
@@ -326,10 +319,10 @@ class CSkipLSTMCell(CCellBaseSkipLSTM):
                                             *args, **kwargs)
 
     def init_hidden(self, batch_size):
-        return (Variable(torch.rand(batch_size, self.hidden_size)),
-                Variable(torch.rand(batch_size, self.hidden_size)),
-                Variable(torch.ones(batch_size, 1)),
-                Variable(torch.zeros(batch_size, 1)))
+        return (Variable(torch.randn(batch_size, self.hidden_size)),
+                Variable(torch.randn(batch_size, self.hidden_size)),
+                Variable(torch.ones(batch_size, 1),requires_grad=False),
+                Variable(torch.zeros(batch_size, 1),requires_grad=False))
 
 class CSkipGRUCell(CCellBaseSkipGRU):
     def __init__(self, *args, **kwargs):
@@ -337,9 +330,9 @@ class CSkipGRUCell(CCellBaseSkipGRU):
                                            *args, **kwargs)
 
     def init_hidden(self, batch_size):
-        return (Variable(torch.rand(batch_size, self.hidden_size)),
-                Variable(torch.ones(batch_size, 1)),
-                Variable(torch.zeros(batch_size, 1)))
+        return (Variable(torch.randn(batch_size, self.hidden_size)),
+                Variable(torch.ones(batch_size, 1),requires_grad=False),
+                Variable(torch.zeros(batch_size, 1),requires_grad=False))
 
 
 class CMultiSkipLSTMCell(CCellBaseSkipLSTM):
@@ -349,11 +342,11 @@ class CMultiSkipLSTMCell(CCellBaseSkipLSTM):
     def init_hidden(self, batch_size):
         initial_states = []
         for i in np.arange(self.num_layers):
-            initial_c = Variable(torch.rand(batch_size, self.hidden_size))
-            initial_h = Variable(torch.rand(batch_size, self.hidden_size))
+            initial_c = Variable(torch.randn(batch_size, self.hidden_size))
+            initial_h = Variable(torch.randn(batch_size, self.hidden_size))
             if i == self.num_layers - 1: #last layer
-                initial_update_prob = Variable(torch.ones(batch_size, 1))
-                initial_cum_update_prob = Variable(torch.zeros(batch_size, 1))
+                initial_update_prob = Variable(torch.ones(batch_size, 1),requires_grad=False)
+                initial_cum_update_prob = Variable(torch.zeros(batch_size, 1),requires_grad=False)
             else:
                 initial_update_prob = None
                 initial_cum_update_prob = None
@@ -368,10 +361,10 @@ class CMultiSkipGRUCell(CCellBaseSkipGRU):
     def init_hidden(self, batch_size):
         initial_states = []
         for i in np.arange(self.num_layers):
-            initial_h = Variable(torch.rand(batch_size, self.hidden_size))
+            initial_h = Variable(torch.randn(batch_size, self.hidden_size))
             if i == self.num_layers - 1: #last layer
-                initial_update_prob = Variable(torch.ones(batch_size, 1))
-                initial_cum_update_prob = Variable(torch.zeros(batch_size, 1))
+                initial_update_prob = Variable(torch.ones(batch_size, 1),requires_grad=False)
+                initial_cum_update_prob = Variable(torch.zeros(batch_size, 1),requires_grad=False)
             else:
                 initial_update_prob = None
                 initial_cum_update_prob = None

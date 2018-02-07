@@ -27,7 +27,8 @@ def create_generic_flags():
     FLAGS['rnn_cells'] = 110            # Number of RNN cells (or hidden_size)
     FLAGS['rnn_layers'] = 1             # Number of RNN layers.
     FLAGS['batch_size'] = 256           # Batch size
-    FLAGS['learning_rate'] = 0.001      # Learning rate.
+    FLAGS['learning_rate'] = 1e-4       # Learning rate.
+    FLAGS['learning_rate_patience'] = 1e4  # Learning rate.
     FLAGS['grad_clip'] = 1.0            # grad clip. Clip gradients at this value. Set to <=0 to disable clipping
     # Flags for the Skip RNN cells
     FLAGS['cost_per_sample'] = 0.       # Cost per used sample. Set to 0 to disable this option

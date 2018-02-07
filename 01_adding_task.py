@@ -26,7 +26,7 @@ create_generic_flags()
 
 # Task-specific flags
 FLAGS['validation_batches'] = 15    # How many batches to use for validation metrics.
-FLAGS['evaluate_every'] = 100       # How often is the model evaluated.
+FLAGS['evaluate_every'] = 300       # How often is the model evaluated.
 FLAGS['sequence_length'] = 50       # Sequence length
 
 # Constants
@@ -126,7 +126,7 @@ def train():
     # Compute loss for each updated state
     budget_loss_fn = compute_budget_loss
     optimizer = torch.optim.Adam(params=model_fn.parameters(), lr=FLAGS['learning_rate'])
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=1000, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=FLAGS['learning_rate_patience'], verbose=True)
 
     if FLAGS['cuda']:
         model_fn.cuda()
