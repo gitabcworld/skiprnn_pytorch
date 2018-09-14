@@ -2,6 +2,14 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
+from torch.autograd import Variable, Function
+
+class BinaryLayer(Function):
+    def forward(self, input):
+        return input.round()
+ 
+    def backward(self, grad_output):
+        return grad_output
 
 def SkipLSTMCell(input, hidden, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None, b_uh=None,
                   activation=F.tanh, lst_layer_norm=None):
@@ -34,7 +42,8 @@ def SkipLSTMCell(input, hidden, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=Non
     new_update_prob_tilde = F.sigmoid(F.linear(new_c_tilde, w_uh, b_uh))
     # Compute value for the update gate
     cum_update_prob = cum_update_prob_prev + torch.min(update_prob_prev, 1. - cum_update_prob_prev)
-    update_gate = cum_update_prob.round()
+    bn = BinaryLayer()
+    update_gate = bn(cum_update_prob)
     # Apply update gate
     new_c = update_gate * new_c_tilde + (1. - update_gate) * c_prev
     new_h = update_gate * new_h_tilde + (1. - update_gate) * h_prev
