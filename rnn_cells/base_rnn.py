@@ -5,7 +5,7 @@ import warnings
 from torch.nn import Module
 from torch.nn.parameter import Parameter
 from torch.nn.utils.rnn import PackedSequence
-from rnn_cells.functions_rnn import custom_RNN as backend_custom_RNN
+from .functions_rnn import custom_RNN as backend_custom_RNN
 
 class custom_RNNBase(Module):
 
