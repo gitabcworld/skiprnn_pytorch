@@ -42,6 +42,7 @@ def SkipLSTMCell(input, hidden, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=Non
     new_update_prob_tilde = F.sigmoid(F.linear(new_c_tilde, w_uh, b_uh))
     # Compute value for the update gate
     cum_update_prob = cum_update_prob_prev + torch.min(update_prob_prev, 1. - cum_update_prob_prev)
+    # round
     bn = BinaryLayer()
     update_gate = bn(cum_update_prob)
     # Apply update gate
@@ -91,7 +92,9 @@ def SkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=None,
     new_update_prob_tilde = F.sigmoid(F.linear(new_h_tilde, w_uh, b_uh))
     # Compute value for the update gate
     cum_update_prob = cum_update_prob_prev + torch.min(update_prob_prev, 1. - cum_update_prob_prev)
-    update_gate = cum_update_prob.round()
+    # round
+    bn = BinaryLayer()
+    update_gate = bn(cum_update_prob)
     # Apply update gate
     new_h = update_gate * new_h_tilde + (1. - update_gate) * h_prev
     new_update_prob = update_gate * new_update_prob_tilde + (1. - update_gate) * update_prob_prev
@@ -141,8 +144,9 @@ def MultiSkipLSTMCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh
 
     # Compute value for the update gate
     cum_update_prob = cum_update_prob_prev + torch.min(update_prob_prev, 1. - cum_update_prob_prev)
-    update_gate = cum_update_prob.round()
-
+    # round
+    bn = BinaryLayer()
+    update_gate = bn(cum_update_prob)
     # Apply update gate
     new_states = []
     for idx in np.arange(num_layers - 1):
@@ -197,8 +201,9 @@ def MultiSkipGRUCell(input, state, num_layers, w_ih, w_hh, w_uh,b_ih=None, b_hh=
 
     # Compute value for the update gate
     cum_update_prob = cum_update_prob_prev + torch.min(update_prob_prev, 1. - cum_update_prob_prev)
-    update_gate = cum_update_prob.round()
-
+    # round
+    bn = BinaryLayer()
+    update_gate = bn(cum_update_prob)
     # Apply update gate
     new_states = []
     for idx in np.arange(num_layers - 1):
